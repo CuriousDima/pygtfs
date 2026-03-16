@@ -3,9 +3,11 @@
 import datetime
 import os.path
 import unittest
+from pathlib import Path
 
 from pygtfs import overwrite_feed
 from pygtfs import Schedule
+from pygtfs.feed import Feed, derive_feed_name
 
 from sqlalchemy.orm import Query
 
@@ -129,6 +131,20 @@ class TestIgnoreFiles(unittest.TestCase):
     def test_services(self):
         ser = [service.service_id for service in self.schedule.services]
         self.assertEqual(ser, ["FULLW", "WE"])
+
+
+class TestPathInputs(unittest.TestCase):
+    def setUp(self):
+        self.data_location = Path(os.path.dirname(__file__)) / "data" / "sample_feed"
+
+    def test_derive_feed_name_accepts_path(self):
+        self.assertEqual(derive_feed_name(self.data_location), "sample_feed")
+        self.assertEqual(derive_feed_name(Path("/tmp/caltrain-ca-us.zip")),
+                         "caltrain-ca-us.zip")
+
+    def test_feed_accepts_path_for_directory_inputs(self):
+        agency_rows = Feed(self.data_location).reader("agency.txt")
+        self.assertEqual(next(agency_rows)[0], "agency_id")
 
 if __name__ == '__main__':
     unittest.main()
