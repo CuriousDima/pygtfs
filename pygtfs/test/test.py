@@ -2,8 +2,10 @@
 
 import datetime
 import os.path
+import tempfile
 import unittest
 from pathlib import Path
+from zipfile import ZipFile
 
 from pygtfs import overwrite_feed
 from pygtfs import Schedule
@@ -145,6 +147,29 @@ class TestPathInputs(unittest.TestCase):
     def test_feed_accepts_path_for_directory_inputs(self):
         agency_rows = Feed(self.data_location).reader("agency.txt")
         self.assertEqual(next(agency_rows)[0], "agency_id")
+
+    def test_feed_accepts_path_for_zip_file_inputs(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            zip_path = Path(temp_dir) / "sample_feed.zip"
+            with ZipFile(zip_path, "w") as zip_file:
+                for feed_file in self.data_location.iterdir():
+                    zip_file.write(feed_file, arcname=feed_file.name)
+
+            feed = Feed(zip_path)
+            agency_rows = feed.reader("agency.txt")
+
+            self.assertEqual(feed.feed_name, "sample_feed.zip")
+            self.assertEqual(next(agency_rows)[0], "agency_id")
+
+    def test_feed_handles_trailing_slash_in_directory_path(self):
+        path_with_trailing_slash = "{0}/".format(self.data_location)
+        feed = Feed(path_with_trailing_slash)
+        # the feed still opens as a directory-backed feed:
+        agency_rows = feed.reader("agency.txt")
+
+        self.assertEqual(feed.feed_name, "sample_feed")
+        self.assertEqual(next(agency_rows)[0], "agency_id")
+
 
 if __name__ == '__main__':
     unittest.main()
